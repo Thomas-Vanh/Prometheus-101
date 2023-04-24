@@ -1,0 +1,100 @@
+version: '3.2'
+services:
+  prometheus:
+    networks:
+      - networks1
+
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ./alert.yml:/etc/prometheus/alert.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./web-config.yml:/etc/prometheus/web-config.yml
+      - prometheus-data:/prometheus
+    depends_on:
+      - cadvisor
+      - node_exporter
+
+  cadvisor:
+    networks:
+      - networks1
+    image: gcr.io/cadvisor/cadvisor:latest
+    hostname: cadvisor
+    container_name: cadvisor
+    ports:
+      - 8080:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    depends_on:
+      - redis
+
+  redis:
+    networks:
+      - networks1
+    image: redis:latest
+    container_name: redis
+    ports:
+      - 6379:6379
+
+  grafana:
+    networks:
+      - networks1
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    volumes:
+      - graf_lib:/var/lib/grafana
+      - graf_data:/etc/grafana/provisioning
+      - graf_log:/var/log/grafana
+      - graf_conf:/etc/grafana
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    ports:
+      - 9100:9100
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    networks:
+      - networks1
+    container_name: alertmanager
+    restart: always
+    ports:
+      - 9093:9093
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+
+volumes:
+  graf_data:
+  graf_lib:
+  graf_log:
+  graf_conf:
+  prometheus-data:
+networks:
+  networks1:
+    name: runner_monitoring
+    external: true

@@ -1,0 +1,46 @@
+
+rule_files:
+  - alert.yml
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets:
+         - alertmanager:9093
+        labels:
+          group: "MyAlertManager"
+
+
+scrape_configs:
+
+- job_name: 'prometheus'
+  scheme: http
+  static_configs:
+    - targets: [prometheus:9090]
+      labels:
+        group: Prometheus
+
+
+- job_name: cadvisor
+  scrape_interval: 15s
+  static_configs:
+  - targets:
+    - cadvisor:8080
+    labels:
+      group: "Scraped"
+
+- job_name: node
+  static_configs:
+  - targets: 
+      - 10.40.17.75:9100
+    labels:
+      group: "Scraped"
+
+- job_name: gitlab-runner 
+  static_configs:
+    - targets:
+        - 10.40.17.75:9252
+      labels:
+        group: "Scraped"
+
+
+
